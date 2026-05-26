@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
-
 import requests
 
 OLLAMA_URL = "http://ollama:11434/api/generate"
@@ -10,19 +9,27 @@ OLLAMA_URL = "http://ollama:11434/api/generate"
 
 def generate_ai_summary(dataframe):
 
+    sample_data = dataframe.head(5).to_string()
+
     prompt = f"""
-    Analyze this dataset summary.
+    Analyze this dataset.
+
+    Dataset shape:
+    {dataframe.shape}
 
     Columns:
     {list(dataframe.columns)}
 
-    Provide:
+    Sample rows:
+    {sample_data}
+
+    Give:
+    - key insights
     - trends
     - anomalies
-    - business insights
-    - observations
+    - business observations
 
-    Keep response concise.
+    Keep response under 100 words.
     """
 
     payload = {
@@ -36,7 +43,7 @@ def generate_ai_summary(dataframe):
         response = requests.post(
             OLLAMA_URL,
             json=payload,
-            timeout=120
+            timeout=300
         )
 
         result = response.json()
@@ -49,6 +56,7 @@ def generate_ai_summary(dataframe):
     except Exception as e:
 
         return f"Error: {str(e)}"
+
 
 st.set_page_config(
     page_title="InsightForge AI",
@@ -76,6 +84,7 @@ uploaded_file = st.sidebar.file_uploader(
 df = None
 
 if uploaded_file:
+
     df = pd.read_csv(uploaded_file)
 
 elif use_sample:
@@ -111,45 +120,51 @@ elif use_sample:
 if df is not None:
 
     tab1, tab2, tab3, tab4 = st.tabs([
-    "Overview",
-    "Analytics",
-    "Raw Data",
-    "AI Insights"
-])
+        "Overview",
+        "Analytics",
+        "Raw Data",
+        "AI Insights"
+    ])
 
     with tab1:
 
         st.subheader("Key Metrics")
 
-        col1, col2, col3 = st.columns(3)
+        numeric_cols = df.select_dtypes(
+            include="number"
+        ).columns
 
-        if "Revenue" in df.columns:
-            col1.metric(
-                "Total Revenue",
-                f"${df['Revenue'].sum():,}"
+        if len(numeric_cols) > 0:
+
+            metric_cols = st.columns(
+                min(3, len(numeric_cols))
             )
 
-        if "Users" in df.columns:
-            col2.metric(
-                "Total Users",
-                f"{df['Users'].sum():,}"
+            for i, col in enumerate(numeric_cols[:3]):
+
+                metric_cols[i].metric(
+                    col,
+                    f"{df[col].sum():,.2f}"
+                )
+
+        st.subheader("Trend Analysis")
+
+        if len(numeric_cols) > 0:
+
+            selected_trend_col = st.selectbox(
+                "Select Trend Column",
+                numeric_cols,
+                key="trend_select"
             )
 
-        if "Orders" in df.columns:
-            col3.metric(
-                "Total Orders",
-                f"{df['Orders'].sum():,}"
-            )
-
-        st.subheader("Revenue Trend")
-
-        if "Revenue" in df.columns:
+            x_axis = df.columns[0]
 
             fig = px.line(
                 df,
-                x="Month",
-                y="Revenue",
-                markers=True
+                x=x_axis,
+                y=selected_trend_col,
+                markers=True,
+                title=f"{selected_trend_col} Trend"
             )
 
             st.plotly_chart(
@@ -175,11 +190,23 @@ if df is not None:
             fig2 = px.histogram(
                 df,
                 x=selected_col,
-                nbins=20
+                nbins=20,
+                title=f"{selected_col} Distribution"
             )
 
             st.plotly_chart(
                 fig2,
+                use_container_width=True
+            )
+
+            fig3 = px.box(
+                df,
+                y=selected_col,
+                title=f"{selected_col} Box Plot"
+            )
+
+            st.plotly_chart(
+                fig3,
                 use_container_width=True
             )
 
@@ -188,6 +215,10 @@ if df is not None:
         st.subheader("Dataset Preview")
 
         st.dataframe(df)
+
+        st.subheader("Dataset Information")
+
+        st.write(df.describe(include="all"))
 
     with tab4:
 
