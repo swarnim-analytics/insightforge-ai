@@ -1,4 +1,5 @@
 services:
+
   insightforge-ai:
     build: .
 
@@ -15,3 +16,58 @@ services:
 
     restart: unless-stopped
 
+    networks:
+      - insightforge-network
+
+
+
+  ollama:
+    image: ollama/ollama
+
+    container_name: ollama
+
+    ports:
+      - "11434:11434"
+
+    volumes:
+      - ollama-data:/root/.ollama
+
+    restart: unless-stopped
+
+    networks:
+      - insightforge-network
+
+
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.3.10
+
+    container_name: open-webui
+
+    ports:
+      - "3000:8080"
+
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+
+    volumes:
+      - open-webui:/app/backend/data
+
+    restart: unless-stopped
+
+    depends_on:
+      - ollama
+
+    networks:
+      - insightforge-network
+
+
+
+volumes:
+  open-webui:
+  ollama-data:
+
+
+
+networks:
+  insightforge-network:
