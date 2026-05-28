@@ -2,7 +2,13 @@ import shutil
 import subprocess
 import socket
 from datetime import datetime
+import sys
+import os
 
+sys.path.append(
+    "/server/projects/insightforge-ai"
+)
+from app.services.market.market_monitor import analyze_stock
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -338,6 +344,27 @@ async def temperature(
 # -------------------------
 # MAIN BOT
 # -------------------------
+async def stock(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    try:
+
+        ticker = context.args[0]
+
+        if not ticker.endswith(".NS"):
+            ticker += ".NS"
+
+        result = analyze_stock(ticker)
+
+        await update.message.reply_text(result)
+
+    except Exception as e:
+
+        await update.message.reply_text(
+            f"Error: {str(e)}"
+        )
 
 def main():
 
@@ -375,6 +402,9 @@ def main():
 
     app.add_handler(
         CommandHandler("temperature", temperature)
+    )
+    app.add_handler(
+    CommandHandler("stock", stock)
     )
 
     print("🚀 Telegram Monitoring Bot Started")
