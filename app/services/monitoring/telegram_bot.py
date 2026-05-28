@@ -8,7 +8,10 @@ import os
 sys.path.append(
     "/server/projects/insightforge-ai"
 )
-from app.services.market.market_monitor import analyze_stock
+from app.services.market.market_monitor import (
+    analyze_stock,
+    analyze_watchlist
+)
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -365,7 +368,14 @@ async def stock(
         await update.message.reply_text(
             f"Error: {str(e)}"
         )
+async def watchlist(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
+    result = analyze_watchlist()
+
+    await update.message.reply_text(result)
 def main():
 
     app = ApplicationBuilder().token(
@@ -405,6 +415,9 @@ def main():
     )
     app.add_handler(
     CommandHandler("stock", stock)
+    )
+    app.add_handler(
+    CommandHandler("watchlist", watchlist)
     )
 
     print("🚀 Telegram Monitoring Bot Started")
